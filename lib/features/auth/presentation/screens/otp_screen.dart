@@ -1,10 +1,11 @@
 // lib/features/auth/presentation/screens/otp_screen.dart
-// 1.2.1 OTP / Verification Screen
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/sg_colors.dart';
+import '../../../../core/services/auth_service.dart';
+import '../../../../core/services/firestore_service.dart';
 
 class OTPScreen extends StatefulWidget {
   const OTPScreen({super.key});
@@ -16,10 +17,16 @@ class OTPScreen extends StatefulWidget {
 class _OTPScreenState extends State<OTPScreen> {
   final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  final _authService = AuthService();
+  final _firestoreService = FirestoreService();
   
-  int _timerSeconds = 30;
+  bool _isLoading = false;
+  String? _errorMessage;
+  int _resendTimer = 30;
   Timer? _timer;
-  bool _canResend = false;
+  
+  String? _verificationId;
+  String? _phoneNumber;
 
   @override
   void initState() {
@@ -27,178 +34,222 @@ class _OTPScreenState extends State<OTPScreen> {
     _startTimer();
   }
 
-  void _startTimer() {
-    _timerSeconds = 30;
-    _canResend = false;
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        if (_timerSeconds > 0) {
-          _timerSeconds--;
-        } else {
-          _canResend = true;
-          timer.cancel();
-        }
-      });
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final extra = GoRouterState.of(context).extra as Map<String, dynamic>?;
+    _verificationId = extra?['verificationId'];
+    _phoneNumber = extra?['phoneNumber'];
   }
 
-  void _verifyOTP() {
-    String otp = _controllers.map((c) => c.text).join();
-    if (otp.length == 6) {
-      context.go('/home');
-    }
+  void _startTimer() {
+    _timer?.cancel();
+    setState(() => _resendTimer = 30);
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendTimer > 0) {
+        setState(() => _resendTimer--);
+      } else {
+        timer.cancel();
+      }
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    for (var controller in _controllers) {
-      controller.dispose();
+    for (var c in _controllers) {
+      c.dispose();
     }
-    for (var node in _focusNodes) {
-      node.dispose();
+    for (var f in _focusNodes) {
+      f.dispose();
     }
     super.dispose();
+  }
+
+  String get _otp => _controllers.map((c) => c.text).join();
+
+  Future<void> _verifyOTP() async {
+    if (_otp.length != 6) {
+      setState(() => _errorMessage = 'Please enter the complete 6-digit OTP');
+      return;
+    }
+
+    if (_verificationId == null) {
+      setState(() => _errorMessage = 'Session expired. Please request a new OTP');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _authService.verifyOTP(
+        verificationId: _verificationId!,
+        otp: _otp,
+      );
+
+      if (result != null && result.user != null) {
+        // Create user profile in Firestore
+        await _firestoreService.createUserOnFirstLogin(
+          uid: result.user!.uid,
+          phone: result.user!.phoneNumber,
+          email: result.user!.email,
+          displayName: result.user!.displayName,
+          photoUrl: result.user!.photoURL,
+        );
+
+        if (mounted) context.go('/home');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  Future<void> _resendOTP() async {
+    if (_resendTimer > 0 || _phoneNumber == null) return;
+
+    setState(() => _errorMessage = null);
+
+    await _authService.sendOTP(
+      phoneNumber: _phoneNumber!,
+      onCodeSent: (verificationId) {
+        setState(() => _verificationId = verificationId);
+        _startTimer();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('OTP sent successfully!')),
+        );
+      },
+      onError: (error) {
+        setState(() => _errorMessage = error);
+      },
+      onAutoVerify: (_) {},
+    );
+  }
+
+  void _onOTPChanged(int index, String value) {
+    if (value.isNotEmpty && index < 5) {
+      _focusNodes[index + 1].requestFocus();
+    }
+    if (value.isEmpty && index > 0) {
+      _focusNodes[index - 1].requestFocus();
+    }
+    // Auto-submit when all digits entered
+    if (_otp.length == 6) {
+      _verifyOTP();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF05050A),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 40),
-              // Back button
-              GestureDetector(
-                onTap: () => context.go('/login'),
-                child: const Icon(Icons.arrow_back, color: Colors.white),
-              ),
-              const SizedBox(height: 32),
-              // Header
-              const Text(
-                'Verify',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+      backgroundColor: SGColors.carbonBlack,
+      body: Container(
+        decoration: const BoxDecoration(gradient: SGColors.backgroundGradient),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Back button
+                IconButton(
+                  onPressed: () => context.pop(),
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Enter the 6-digit code sent to your device',
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.white.withOpacity(0.6),
+                const SizedBox(height: 32),
+                // Title
+                const Text(
+                  'Enter OTP',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
-              ),
-              const SizedBox(height: 40),
-              // OTP boxes
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(6, (index) => _buildOTPBox(index)),
-              ),
-              const SizedBox(height: 32),
-              // Verify button
-              GestureDetector(
-                onTap: _verifyOTP,
-                child: Container(
+                const SizedBox(height: 8),
+                Text(
+                  'We sent a code to ${_phoneNumber ?? 'your phone'}',
+                  style: const TextStyle(fontSize: 15, color: SGColors.htmlMuted),
+                ),
+                const SizedBox(height: 40),
+                // OTP Input Boxes
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(6, (index) {
+                    return SizedBox(
+                      width: 50,
+                      height: 60,
+                      child: TextField(
+                        controller: _controllers[index],
+                        focusNode: _focusNodes[index],
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        maxLength: 1,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                        decoration: InputDecoration(
+                          counterText: '',
+                          filled: true,
+                          fillColor: SGColors.htmlGlass,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: SGColors.borderSubtle),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: SGColors.borderSubtle),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: SGColors.htmlViolet, width: 2),
+                          ),
+                        ),
+                        onChanged: (value) => _onOTPChanged(index, value),
+                      ),
+                    );
+                  }),
+                ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+                ],
+                const SizedBox(height: 32),
+                // Verify Button
+                SizedBox(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF00D4FF), Color(0xFF007BFF)],
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _verifyOTP,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: SGColors.htmlViolet,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
+                    child: _isLoading
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Verify OTP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
                   ),
-                  child: const Text(
-                    'Verify',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                ),
+                const SizedBox(height: 24),
+                // Resend OTP
+                Center(
+                  child: TextButton(
+                    onPressed: _resendTimer == 0 ? _resendOTP : null,
+                    child: Text(
+                      _resendTimer > 0 ? 'Resend OTP in ${_resendTimer}s' : 'Resend OTP',
+                      style: TextStyle(
+                        color: _resendTimer > 0 ? SGColors.htmlMuted : SGColors.htmlViolet,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              // Resend section
-              Center(
-                child: Column(
-                  children: [
-                    if (!_canResend)
-                      Text(
-                        'Resend in ${_timerSeconds}s',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withOpacity(0.6),
-                        ),
-                      ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _canResend ? _startTimer : null,
-                      child: Text(
-                        'Resend',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: _canResend 
-                              ? const Color(0xFF00D4FF) 
-                              : Colors.white.withOpacity(0.4),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildOTPBox(int index) {
-    return SizedBox(
-      width: 48,
-      height: 56,
-      child: TextField(
-        controller: _controllers[index],
-        focusNode: _focusNodes[index],
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        maxLength: 1,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        decoration: InputDecoration(
-          counterText: '',
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.08),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFF00D4FF), width: 2),
-          ),
-        ),
-        onChanged: (value) {
-          if (value.isNotEmpty && index < 5) {
-            _focusNodes[index + 1].requestFocus();
-          }
-          if (value.isEmpty && index > 0) {
-            _focusNodes[index - 1].requestFocus();
-          }
-        },
       ),
     );
   }
