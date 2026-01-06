@@ -1,11 +1,19 @@
 // lib/main.dart
-// ShowGrid Complete App - All screens from sitemap
+// ShowGrid Complete App with Firebase
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'firebase_options.dart';
 import 'core/router/app_router.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -19,7 +27,7 @@ void main() {
     systemNavigationBarIconBrightness: Brightness.light,
   ));
   
-  runApp(const ShowGridApp());
+  runApp(const ProviderScope(child: ShowGridApp()));
 }
 
 class ShowGridApp extends StatelessWidget {

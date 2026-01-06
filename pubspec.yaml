@@ -1,5 +1,5 @@
 name: showgrid
-description: "ShowGrid Complete App - All screens from sitemap"
+description: "ShowGrid - Talent Competition Platform"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -20,6 +20,28 @@ dependencies:
   camera: ^0.10.5+9
   image_picker: ^1.0.7
   permission_handler: ^11.3.0
+  
+  # Firebase
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.3
+  cloud_firestore: ^5.5.0
+  firebase_storage: ^12.3.6
+  
+  # Google Sign In
+  google_sign_in: ^6.2.1
+  
+  # State Management
+  flutter_riverpod: ^2.5.1
+  
+  # Image/Video compression
+  flutter_image_compress: ^2.1.0
+  video_compress: ^3.1.2
+  
+  # Utilities
+  path_provider: ^2.1.2
+  path: ^1.9.0
+  uuid: ^4.3.3
+  cached_network_image: ^3.3.1
 
 dev_dependencies:
   flutter_test:
