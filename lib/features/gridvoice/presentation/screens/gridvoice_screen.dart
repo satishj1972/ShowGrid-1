@@ -1,81 +1,70 @@
 // lib/features/gridvoice/presentation/screens/gridvoice_screen.dart
-// 2.3 GridVoice - Main page with chapters
+// GridVoice - Loads chapters from Firestore
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/theme/sg_colors.dart';
 import '../../../../core/widgets/sg_bottom_nav.dart';
 
 class GridVoiceScreen extends StatelessWidget {
   const GridVoiceScreen({super.key});
 
-  final List<Map<String, dynamic>> _chapters = const [
-    {
-      'id': 'ch01',
-      'icon': '📸',
-      'title': 'TN Through You',
-      'desc': 'Show the Tamil Nadu you see every day — streets, routines, people, markets, travel, work and moments that feel real.',
-      'chapter': 'Chapter 01',
-      'tags': ['Photo / Video', 'Everyday Life', 'Storytelling'],
-      'type': 'both',
-    },
-    {
-      'id': 'ch02',
-      'icon': '🌿',
-      'title': 'Protect Our TN',
-      'desc': 'Capture something worth preserving — nature, heritage, traditions, crafts or community spaces that define Tamil Nadu.',
-      'chapter': 'Chapter 02',
-      'tags': ['Photo / Video', 'Culture • Nature', 'Positive Impact'],
-      'type': 'both',
-    },
-    {
-      'id': 'ch03',
-      'icon': '⚠️',
-      'title': 'Fix Our TN',
-      'desc': 'Show everyday civic issues visually — broken roads, waste, crowding, water issues or local challenges. Issue-focused, not political.',
-      'chapter': 'Chapter 03',
-      'tags': ['Photo', 'Civic Issues', 'Non-Political'],
-      'type': 'photo',
-    },
-    {
-      'id': 'ch04',
-      'icon': '✨',
-      'title': 'My TN 2.0',
-      'desc': 'Capture a hopeful or futuristic version of Tamil Nadu — ideas, improvements, dreams or symbolic transformations.',
-      'chapter': 'Chapter 04',
-      'tags': ['Photo / Video', 'Future Vision', 'Creative'],
-      'type': 'both',
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SGColors.carbonBlack,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.topCenter,
-            radius: 1.5,
-            colors: [Color(0xFF1F2F3F), Color(0xFF020214), Color(0xFF01000C)],
-            stops: [0.0, 0.45, 1.0],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: SGColors.backgroundGradient),
         child: SafeArea(
           child: Column(
             children: [
               _buildHeader(context),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 90),
-                  children: [
-                    _buildHero(),
-                    const SizedBox(height: 18),
-                    _buildSectionTitle('GridVoice Chapters'),
-                    const SizedBox(height: 8),
-                    ..._chapters.map((ch) => _buildChapterCard(context, ch)),
-                    const SizedBox(height: 16),
-                    _buildFlowSection(),
-                  ],
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('chapters')
+                      .where('isActive', isEqualTo: true)
+                      .orderBy('createdAt', descending: true)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: SGColors.htmlGreen),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)),
+                      );
+                    }
+
+                    final chapters = snapshot.data?.docs ?? [];
+
+                    if (chapters.isEmpty) {
+                      return const Center(
+                        child: Text('No chapters available', style: TextStyle(color: SGColors.htmlMuted)),
+                      );
+                    }
+
+                    return ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                      children: [
+                        _buildHero(),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'VOICE CHAPTERS',
+                          style: TextStyle(fontSize: 13, letterSpacing: 1.8, color: SGColors.htmlMuted),
+                        ),
+                        const SizedBox(height: 14),
+                        ...chapters.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return _buildChapterCard(context, doc.id, data);
+                        }).toList(),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -87,15 +76,15 @@ class GridVoiceScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF030412).withOpacity(0.95),
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
       child: Row(
         children: [
+          GestureDetector(
+            onTap: () => context.go('/home'),
+            child: const Icon(Icons.arrow_back, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
           Container(
             width: 22,
             height: 22,
@@ -103,22 +92,15 @@ class GridVoiceScreen extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: const SweepGradient(
                 startAngle: 2.4,
-                colors: [Color(0xFF5CFFB1), Color(0xFF5CA8FF), Color(0xFF9B7DFF), Color(0xFF5CFFB1)],
+                colors: [Color(0xFFFF4FD8), Color(0xFFFFB84D), Color(0xFF5CF1FF), Color(0xFFFF4FD8)],
               ),
-              boxShadow: [BoxShadow(color: const Color(0xFF5CFFB1).withOpacity(0.6), blurRadius: 14)],
+              boxShadow: [BoxShadow(color: const Color(0xFFFF4FD8).withOpacity(0.7), blurRadius: 14)],
             ),
           ),
-          const SizedBox(width: 10),
-          const Text('SHOWGRID', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white)),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0xFF5CFFB1).withOpacity(0.15),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFF5CFFB1).withOpacity(0.5)),
-            ),
-            child: const Text('GRIDVOICE', style: TextStyle(fontSize: 10, letterSpacing: 1.5, color: Color(0xFF5CFFB1))),
+          const SizedBox(width: 8),
+          const Text(
+            'SHOWGRID',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1.8, color: Colors.white),
           ),
         ],
       ),
@@ -129,149 +111,119 @@ class GridVoiceScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: SGColors.borderSubtle),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0B1A30), Color(0xFF040518)],
+          colors: [Color(0xF8082010), Color(0xF8051008)],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.14)),
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned(
-            top: -40,
-            left: -40,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [const Color(0xFF5CFFB1).withOpacity(0.22), Colors.transparent]),
-              ),
+          const Text(
+            'STORIES • VOICES • PEOPLE',
+            style: TextStyle(fontSize: 11, letterSpacing: 1.5, color: SGColors.htmlMuted),
+          ),
+          const SizedBox(height: 8),
+          RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, height: 1.2),
+              children: [
+                const TextSpan(text: 'GridVoice\n', style: TextStyle(color: Colors.white)),
+                TextSpan(
+                  text: 'Tamil Nadu',
+                  style: TextStyle(
+                    foreground: Paint()
+                      ..shader = const LinearGradient(
+                        colors: [Color(0xFF4ADE80), Color(0xFF5CF1FF)],
+                      ).createShader(const Rect.fromLTWH(0, 0, 200, 30)),
+                  ),
+                ),
+              ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('SHOWGRID ORIGINALS • SEASON 1', style: TextStyle(fontSize: 11, letterSpacing: 2.2, color: SGColors.htmlMuted)),
-              const SizedBox(height: 6),
-              RichText(
-                text: TextSpan(
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, height: 1.2),
-                  children: [
-                    const TextSpan(text: 'GridVoice\n', style: TextStyle(color: Colors.white)),
-                    TextSpan(
-                      text: 'Tamil Nadu',
-                      style: TextStyle(
-                        foreground: Paint()..shader = const LinearGradient(
-                          colors: [Color(0xFF5CFFB1), Color(0xFF5CA8FF), Color(0xFF9B7DFF)],
-                        ).createShader(const Rect.fromLTWH(0, 0, 150, 30)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'A visual storytelling season capturing the real Tamil Nadu — its people, places, beauty, challenges and dreams. No scripts. No politics. Just stories.',
-                style: TextStyle(fontSize: 13, color: SGColors.htmlMuted),
-              ),
-              const SizedBox(height: 12),
-              // Audio feature highlight
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF5CFFB1).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF5CFFB1).withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.mic, color: Color(0xFF5CFFB1), size: 18),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'New! Record voice stories with your photos & videos',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF5CFFB1)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const SizedBox(height: 10),
+          const Text(
+            'Share stories of people and places. Record your voice, share experiences, and connect through audio narratives.',
+            style: TextStyle(fontSize: 13, color: SGColors.htmlMuted, height: 1.4),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(title.toUpperCase(), style: const TextStyle(fontSize: 13, letterSpacing: 1.8, color: SGColors.htmlMuted));
-  }
+  Widget _buildChapterCard(BuildContext context, String chapterId, Map<String, dynamic> data) {
+    final String title = data['title'] ?? 'Chapter';
+    final String description = data['description'] ?? '';
+    final String category = data['category'] ?? 'Category';
+    final String imageUrl = data['imageUrl'] ?? '';
+    final int entriesCount = data['entriesCount'] ?? 0;
+    final int maxDuration = data['maxDuration'] ?? 180;
 
-  Widget _buildChapterCard(BuildContext context, Map<String, dynamic> chapter) {
     return GestureDetector(
-      onTap: () => context.go('/gridvoice/challenge/${chapter['id']}', extra: chapter),
+      onTap: () => context.push('/gridvoice/challenge/$chapterId', extra: data),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF07081C).withOpacity(0.98),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withOpacity(0.12)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: SGColors.borderSubtle),
+          color: SGColors.htmlGlass,
         ),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    gradient: const LinearGradient(colors: [Color(0xFF5CFFB1), Color(0xFF5CA8FF)]),
+            // Thumbnail
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: SGColors.htmlGreen.withOpacity(0.2),
+              ),
+              child: imageUrl.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.mic, color: SGColors.htmlGreen, size: 28),
+                      ),
+                    )
+                  : const Icon(Icons.mic, color: SGColors.htmlGreen, size: 28),
+            ),
+            const SizedBox(width: 14),
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
                   ),
-                  child: Center(child: Text(chapter['icon'], style: const TextStyle(fontSize: 16))),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: const TextStyle(fontSize: 12, color: SGColors.htmlMuted, height: 1.3),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
                     children: [
-                      Text(chapter['title'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                      const SizedBox(height: 3),
-                      Text(chapter['desc'], style: const TextStyle(fontSize: 11.5, color: SGColors.htmlMuted, height: 1.45)),
+                      _buildPill(category),
+                      const SizedBox(width: 8),
+                      _buildPill('${maxDuration ~/ 60} MIN MAX'),
+                      const Spacer(),
+                      const Icon(Icons.headphones, size: 14, color: SGColors.htmlMuted),
+                      const SizedBox(width: 4),
+                      Text('$entriesCount stories', style: const TextStyle(fontSize: 11, color: SGColors.htmlMuted)),
                     ],
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0A0C24).withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white.withOpacity(0.16)),
-                  ),
-                  child: Text(chapter['chapter'], style: const TextStyle(fontSize: 10, letterSpacing: 1.2, color: SGColors.htmlMuted)),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 44, top: 8),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: (chapter['tags'] as List<String>).map((tag) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0C0E28).withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white.withOpacity(0.12)),
-                  ),
-                  child: Text(tag.toUpperCase(), style: const TextStyle(fontSize: 10, letterSpacing: 0.8, color: SGColors.htmlMuted)),
-                )).toList(),
+                ],
               ),
             ),
           ],
@@ -280,53 +232,17 @@ class GridVoiceScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFlowSection() {
-    final steps = [
-      {'num': '1', 'title': 'Pick a chapter', 'sub': 'Choose your story lane'},
-      {'num': '2', 'title': 'Capture your story', 'sub': 'Photo, video or audio'},
-      {'num': '3', 'title': 'Get scored', 'sub': 'AI GridScore + community ratings'},
-      {'num': '4', 'title': 'Build your voice', 'sub': 'Your best stories define your season rank'},
-    ];
-
+  Widget _buildPill(String text) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: SGColors.htmlGlass,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.14)),
+        borderRadius: BorderRadius.circular(20),
+        color: SGColors.htmlGreen.withOpacity(0.15),
+        border: Border.all(color: SGColors.htmlGreen.withOpacity(0.3)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('How GridVoice Works', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
-          ...steps.map((step) => Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.12))),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [Color(0xFF5CFFB1), Color(0xFF5CA8FF)]),
-                  ),
-                  child: Center(child: Text(step['num']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF050611)))),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(step['title']!, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white)),
-                    Text(step['sub']!, style: const TextStyle(fontSize: 11, color: SGColors.htmlMuted)),
-                  ],
-                ),
-              ],
-            ),
-          )),
-        ],
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(fontSize: 9, letterSpacing: 0.5, color: SGColors.htmlGreen),
       ),
     );
   }
