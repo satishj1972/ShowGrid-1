@@ -21,6 +21,7 @@
         "google_sign_in",
         "http",
         "image_picker",
+        "path",
         "path_provider",
         "permission_handler",
         "shared_preferences"
@@ -90,6 +91,17 @@
       ]
     },
     {
+      "name": "cloud_functions",
+      "version": "5.6.2",
+      "dependencies": [
+        "cloud_functions_platform_interface",
+        "cloud_functions_web",
+        "firebase_core",
+        "firebase_core_platform_interface",
+        "flutter"
+      ]
+    },
+    {
       "name": "firebase_storage",
       "version": "12.4.10",
       "dependencies": [
@@ -146,6 +158,11 @@
         "flutter_image_compress_platform_interface",
         "flutter_image_compress_web"
       ]
+    },
+    {
+      "name": "path",
+      "version": "1.9.1",
+      "dependencies": []
     },
     {
       "name": "path_provider",
@@ -296,11 +313,6 @@
       ]
     },
     {
-      "name": "path",
-      "version": "1.9.1",
-      "dependencies": []
-    },
-    {
       "name": "matcher",
       "version": "0.12.17",
       "dependencies": [
@@ -444,6 +456,39 @@
       ]
     },
     {
+      "name": "firebase_core_platform_interface",
+      "version": "6.0.2",
+      "dependencies": [
+        "collection",
+        "flutter",
+        "flutter_test",
+        "meta",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "cloud_functions_web",
+      "version": "4.11.5",
+      "dependencies": [
+        "cloud_functions_platform_interface",
+        "firebase_core",
+        "firebase_core_web",
+        "flutter",
+        "flutter_web_plugins",
+        "web"
+      ]
+    },
+    {
+      "name": "cloud_functions_platform_interface",
+      "version": "5.8.2",
+      "dependencies": [
+        "firebase_core",
+        "flutter",
+        "meta",
+        "plugin_platform_interface"
+      ]
+    },
+    {
       "name": "firebase_storage_web",
       "version": "3.10.17",
       "dependencies": [
@@ -467,17 +512,6 @@
         "collection",
         "firebase_core",
         "flutter",
-        "meta",
-        "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "firebase_core_platform_interface",
-      "version": "6.0.2",
-      "dependencies": [
-        "collection",
-        "flutter",
-        "flutter_test",
         "meta",
         "plugin_platform_interface"
       ]
@@ -1004,39 +1038,6 @@
       "name": "vm_service",
       "version": "15.0.2",
       "dependencies": []
-    },
-    {
-      "name": "cloud_functions",
-      "version": "5.6.2",
-      "dependencies": [
-        "cloud_functions_platform_interface",
-        "cloud_functions_web",
-        "firebase_core",
-        "firebase_core_platform_interface",
-        "flutter"
-      ]
-    },
-    {
-      "name": "cloud_functions_web",
-      "version": "4.11.5",
-      "dependencies": [
-        "cloud_functions_platform_interface",
-        "firebase_core",
-        "firebase_core_web",
-        "flutter",
-        "flutter_web_plugins",
-        "web"
-      ]
-    },
-    {
-      "name": "cloud_functions_platform_interface",
-      "version": "5.8.2",
-      "dependencies": [
-        "firebase_core",
-        "flutter",
-        "meta",
-        "plugin_platform_interface"
-      ]
     }
   ],
   "configVersion": 1
