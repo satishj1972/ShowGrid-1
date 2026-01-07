@@ -4,15 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/theme/sg_colors.dart';
 import '../../../../core/widgets/sg_bottom_nav.dart';
+import '../../../../core/widgets/notification_bell.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final displayName = user?.displayName ?? 'GridMaster';
-
     return Scaffold(
       backgroundColor: SGColors.carbonBlack,
       body: Container(
@@ -43,15 +41,15 @@ class HomeScreen extends StatelessWidget {
         children: [
           Container(
             width: 22, height: 22,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const SweepGradient(startAngle: 2.4, colors: [Color(0xFFFF4FD8), Color(0xFFFFB84D), Color(0xFF5CF1FF), Color(0xFFFF4FD8)]),
+              gradient: SweepGradient(startAngle: 2.4, colors: [Color(0xFFFF4FD8), Color(0xFFFFB84D), Color(0xFF5CF1FF), Color(0xFFFF4FD8)]),
             ),
           ),
           const SizedBox(width: 10),
           const Text('SHOWGRID', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white)),
           const Spacer(),
-          const Icon(Icons.notifications_outlined, color: Colors.white),
+          const NotificationBell(),
         ],
       ),
     );

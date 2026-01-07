@@ -15,6 +15,7 @@ import '../../features/discovery/presentation/screens/discovery_screen.dart';
 import '../../features/powerboard/presentation/screens/powerboard_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/rate/presentation/screens/rate_screen.dart';
+import '../../features/notifications/presentation/screens/notifications_screen.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -29,6 +30,7 @@ class AppRouter {
       }),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(path: '/rate', builder: (context, state) => const RateScreen()),
+      GoRoute(path: '/notifications', builder: (context, state) => const NotificationsScreen()),
       GoRoute(path: '/fortune', builder: (context, state) => const FortuneScreen()),
       GoRoute(path: '/fortune/challenge/:id', builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
