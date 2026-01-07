@@ -1,7 +1,6 @@
 // lib/features/home/presentation/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/theme/sg_colors.dart';
 import '../../../../core/widgets/sg_bottom_nav.dart';
 import '../../../../core/widgets/notification_bell.dart';
