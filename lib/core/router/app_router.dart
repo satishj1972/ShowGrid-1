@@ -11,6 +11,7 @@ import '../../features/fortune/presentation/screens/photo_capture_screen.dart';
 import '../../features/fortune/presentation/screens/video_capture_screen.dart';
 import '../../features/fanverse/presentation/screens/fanverse_screen.dart';
 import '../../features/gridvoice/presentation/screens/gridvoice_screen.dart';
+import '../../features/gridvoice/presentation/screens/audio_record_screen.dart';
 import '../../features/discovery/presentation/screens/discovery_screen.dart';
 import '../../features/powerboard/presentation/screens/powerboard_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
@@ -63,6 +64,15 @@ class AppRouter {
       GoRoute(path: '/gridvoice/challenge/:id', builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
         return ChallengeScreen(challengeId: state.pathParameters['id']!, challengeData: extra, gridType: 'gridvoice');
+      }),
+      GoRoute(path: '/gridvoice/record/:id', builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return AudioRecordScreen(
+          challengeId: state.pathParameters['id']!,
+          challengeTitle: extra?['title'] ?? 'Chapter',
+          challengeDescription: extra?['description'] ?? '',
+          maxDuration: extra?['maxDuration'] ?? 180,
+        );
       }),
       GoRoute(path: '/discovery', builder: (context, state) => const DiscoveryScreen()),
       GoRoute(path: '/powerboard', builder: (context, state) => const PowerboardScreen()),
