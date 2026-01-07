@@ -818,6 +818,12 @@
       "languageVersion": "3.1"
     },
     {
+      "name": "video_compress",
+      "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/video_compress-3.1.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
       "name": "vm_service",
       "rootUri": "file:///home/codespace/.pub-cache/hosted/pub.dev/vm_service-15.0.2",
       "packageUri": "lib/",

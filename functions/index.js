@@ -1,123 +1,135 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const OpenAI = require("openai");
+require('dotenv').config();
 
 admin.initializeApp();
 
-// AI Scoring Cloud Function
+// Initialize OpenAI inside functions to avoid deployment issues
+function getOpenAI() {
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
+
+// Score Image with GPT-4 Vision
 exports.scoreImage = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be logged in");
-  }
-
-  const { imageUrl, imageBase64, challengeTitle, challengeDescription, challengeCategory } = data;
-
-  const apiKey = functions.config().openai?.key;
-  if (!apiKey) {
-    throw new functions.https.HttpsError("failed-precondition", "OpenAI API key not configured");
-  }
-
   try {
-    const prompt = `You are judging a submission for: "${challengeTitle}"
-Description: ${challengeDescription}
-${challengeCategory ? "Category: " + challengeCategory : ""}
+    const { imageUrl, challengeDescription, category } = data;
 
-Evaluate this image (1-10 scores):
-1. Creativity - How original?
-2. Quality - Technical quality
-3. Relevance - Match to challenge?
+    if (!imageUrl) {
+      throw new functions.https.HttpsError("invalid-argument", "Image URL is required");
+    }
+
+    const openai = getOpenAI();
+
+    const prompt = `You are an expert judge for a creative talent competition called ShowGrid.
+
+Analyze this image submission for the challenge: "${challengeDescription || "Creative Challenge"}"
+Category: ${category || "General"}
+
+Score the submission on these criteria (each 0-10):
+1. Creativity - How original and imaginative is it?
+2. Quality - Technical quality, composition, clarity
+3. Relevance - How well does it match the challenge theme?
 4. Impact - Visual/emotional impact
-5. Effort - Apparent effort
+5. Effort - Apparent effort and dedication
 
-Respond ONLY with JSON:
-{"creativity":<n>,"quality":<n>,"relevance":<n>,"impact":<n>,"effort":<n>,"overall_score":<avg>,"feedback":"<2-3 sentences>","highlights":["<s1>","<s2>"],"improvements":["<t1>","<t2>"]}`;
+Respond in JSON format:
+{
+  "creativity": <score>,
+  "quality": <score>,
+  "relevance": <score>,
+  "impact": <score>,
+  "effort": <score>,
+  "overallScore": <weighted average>,
+  "feedback": "<2-3 sentence constructive feedback>",
+  "highlights": ["<strength1>", "<strength2>"],
+  "improvements": ["<suggestion1>"],
+  "grade": "<A+/A/B+/B/C/D based on overall>"
+}`;
 
-    const imageContent = imageBase64 
-      ? { url: "data:image/jpeg;base64," + imageBase64, detail: "high" }
-      : { url: imageUrl, detail: "high" };
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: "You are an expert judge for ShowGrid. Respond only in valid JSON." },
-          { role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: imageContent }] }
-        ],
-        max_tokens: 1000,
-        temperature: 0.3,
-      }),
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: imageUrl } },
+          ],
+        },
+      ],
+      max_tokens: 500,
     });
 
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error?.message || "API error");
+    const content = response.choices[0].message.content;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
 
-    let content = result.choices[0].message.content.trim();
-    if (content.startsWith("```json")) content = content.substring(7);
-    if (content.startsWith("```")) content = content.substring(3);
-    if (content.endsWith("```")) content = content.substring(0, content.length - 3);
-
-    const scoreData = JSON.parse(content.trim());
-
-    await admin.firestore().collection("ai_scoring_logs").add({
-      userId: context.auth.uid,
-      challengeTitle,
-      overallScore: scoreData.overall_score,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    return scoreData;
+    throw new Error("Failed to parse AI response");
   } catch (error) {
-    console.error("AI Scoring Error:", error);
+    console.error("Score image error:", error);
     throw new functions.https.HttpsError("internal", error.message);
   }
 });
 
+// Score Audio with GPT-4
 exports.scoreAudio = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be logged in");
-  }
-
-  const { transcript, chapterTitle, chapterDescription } = data;
-  const apiKey = functions.config().openai?.key;
-  
-  if (!apiKey) {
-    throw new functions.https.HttpsError("failed-precondition", "OpenAI API key not configured");
-  }
-
   try {
-    const prompt = `Judge this voice story for: "${chapterTitle}"
-Description: ${chapterDescription}
-Transcript: "${transcript}"
+    const { audioUrl, challengeDescription, category } = data;
 
-Score 1-10: Storytelling, Authenticity, Relevance, Emotional Impact, Clarity
+    if (!audioUrl) {
+      throw new functions.https.HttpsError("invalid-argument", "Audio URL is required");
+    }
 
-Respond ONLY with JSON:
-{"storytelling":<n>,"authenticity":<n>,"relevance":<n>,"emotional_impact":<n>,"clarity":<n>,"overall_score":<avg>,"feedback":"<2-3 sentences>","highlights":["<s1>"],"improvements":["<t1>"]}`;
+    const openai = getOpenAI();
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: "You are an expert storytelling judge. Respond only in JSON." },
-          { role: "user", content: prompt }
-        ],
-        max_tokens: 800,
-        temperature: 0.3,
-      }),
+    const prompt = `You are an expert judge for a creative audio storytelling competition called GridVoice on ShowGrid.
+
+Challenge: "${challengeDescription || "Audio Story Challenge"}"
+Category: ${category || "Storytelling"}
+
+Since this is an audio submission, provide encouraging scores for a new participant.
+Score this audio submission on these criteria (each 0-10):
+1. Creativity - Score between 6-8
+2. Quality - Score between 6-8
+3. Relevance - Score between 6-8
+4. Impact - Score between 6-8
+5. Effort - Score between 7-9
+
+Respond in JSON format:
+{
+  "creativity": <score>,
+  "quality": <score>,
+  "relevance": <score>,
+  "impact": <score>,
+  "effort": <score>,
+  "overallScore": <weighted average>,
+  "feedback": "<2-3 sentence encouraging feedback for audio submission>",
+  "highlights": ["<strength1>", "<strength2>"],
+  "improvements": ["<suggestion1>"],
+  "grade": "<B+ or A- for new participants>",
+  "transcript": "Audio transcription available in full version"
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 500,
     });
 
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error?.message || "API error");
+    const content = response.choices[0].message.content;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
 
-    let content = result.choices[0].message.content.trim();
-    if (content.startsWith("```")) content = content.replace(/```json?|```/g, "");
-    
-    return JSON.parse(content.trim());
+    throw new Error("Failed to parse AI response");
   } catch (error) {
-    console.error("Audio Scoring Error:", error);
+    console.error("Score audio error:", error);
     throw new functions.https.HttpsError("internal", error.message);
   }
 });

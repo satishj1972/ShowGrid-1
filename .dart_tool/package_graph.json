@@ -28,7 +28,8 @@
         "path_provider",
         "permission_handler",
         "record",
-        "shared_preferences"
+        "shared_preferences",
+        "video_compress"
       ],
       "devDependencies": [
         "flutter_lints",
@@ -58,6 +59,13 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "video_compress",
+      "version": "3.1.4",
+      "dependencies": [
+        "flutter"
       ]
     },
     {
