@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/theme/sg_colors.dart';
 import '../../../../core/services/auth_service.dart';
 
@@ -14,31 +15,16 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController();
-  final _authService = AuthService();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   String? _errorMessage;
+  String _countryCode = '+91';
 
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    super.dispose();
-  }
-
-  String _formatPhoneNumber(String phone) {
-    // Remove any non-digit characters
-    String digits = phone.replaceAll(RegExp(r'[^\d]'), '');
-    // Add India country code if not present
-    if (!digits.startsWith('91')) {
-      digits = '91$digits';
-    }
-    return '+$digits';
-  }
-
-  Future<void> _sendOTP() async {
+  Future<void> _sendOtp() async {
     final phone = _phoneController.text.trim();
+    
     if (phone.isEmpty || phone.length < 10) {
-      setState(() => _errorMessage = 'Please enter a valid 10-digit phone number');
+      setState(() => _errorMessage = 'Please enter a valid phone number');
       return;
     }
 
@@ -47,37 +33,51 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
-    final formattedPhone = _formatPhoneNumber(phone);
+    final fullPhone = '$_countryCode$phone';
 
-    await _authService.sendOTP(
-      phoneNumber: formattedPhone,
-      onCodeSent: (verificationId) {
-        setState(() => _isLoading = false);
-        // Navigate to OTP screen with verification ID
-        context.push('/otp', extra: {
-          'verificationId': verificationId,
-          'phoneNumber': formattedPhone,
-        });
-      },
-      onError: (error) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = error;
-        });
-      },
-      onAutoVerify: (credential) async {
-        // Auto-verification successful (Android only)
-        try {
-          await _authService.verifyOTP(
-            verificationId: '',
-            otp: credential.smsCode ?? '',
-          );
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: fullPhone,
+        verificationCompleted: (credential) async {
+          // Auto-verification (Android only)
+          await FirebaseAuth.instance.signInWithCredential(credential);
           if (mounted) context.go('/home');
-        } catch (e) {
-          setState(() => _errorMessage = e.toString());
-        }
-      },
-    );
+        },
+        verificationFailed: (e) {
+          setState(() {
+            _errorMessage = _getPhoneErrorMessage(e.code);
+            _isLoading = false;
+          });
+        },
+        codeSent: (verificationId, resendToken) {
+          setState(() => _isLoading = false);
+          context.push('/otp', extra: {
+            'phoneNumber': fullPhone,
+            'verificationId': verificationId,
+          });
+        },
+        codeAutoRetrievalTimeout: (verificationId) {},
+        timeout: const Duration(seconds: 60),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to send OTP. Please try again.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _getPhoneErrorMessage(String code) {
+    switch (code) {
+      case 'invalid-phone-number':
+        return 'Invalid phone number format';
+      case 'too-many-requests':
+        return 'Too many attempts. Please try later.';
+      case 'quota-exceeded':
+        return 'SMS quota exceeded. Try again later.';
+      default:
+        return 'Failed to send OTP. Please try again.';
+    }
   }
 
   Future<void> _signInWithGoogle() async {
@@ -87,15 +87,28 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final result = await _authService.signInWithGoogle();
-      if (result != null && mounted) {
+      final user = await AuthService.signInWithGoogle();
+      
+      if (user != null && mounted) {
         context.go('/home');
+      } else {
+        setState(() {
+          _errorMessage = 'Google sign-in was cancelled';
+          _isGoogleLoading = false;
+        });
       }
     } catch (e) {
-      setState(() => _errorMessage = e.toString());
-    } finally {
-      if (mounted) setState(() => _isGoogleLoading = false);
+      setState(() {
+        _errorMessage = 'Google sign-in failed. Please try again.';
+        _isGoogleLoading = false;
+      });
     }
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
   }
 
   @override
@@ -105,136 +118,208 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: SGColors.backgroundGradient),
         child: SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 40),
+
                 // Logo
-                Row(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const SweepGradient(
-                          startAngle: 2.4,
-                          colors: [Color(0xFFFF4FD8), Color(0xFFFFB84D), Color(0xFF5CF1FF), Color(0xFFFF4FD8)],
-                        ),
-                        boxShadow: [BoxShadow(color: const Color(0xFFFF4FD8).withOpacity(0.7), blurRadius: 14)],
+                Center(
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const SweepGradient(
+                        startAngle: 2.4,
+                        colors: [Color(0xFFFF4FD8), Color(0xFFFFB84D), Color(0xFF5CF1FF), Color(0xFFFF4FD8)],
                       ),
+                      boxShadow: [BoxShadow(color: const Color(0xFFFF4FD8).withOpacity(0.5), blurRadius: 30)],
                     ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'SHOWGRID',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 2, color: Colors.white),
+                    child: const Center(
+                      child: Text('SG', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 48),
-                // Title
-                const Text(
-                  'Welcome back!',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Sign in to continue your journey',
-                  style: TextStyle(fontSize: 15, color: SGColors.htmlMuted),
+                  ),
                 ),
                 const SizedBox(height: 40),
-                // Phone Input
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: SGColors.borderSubtle),
-                    color: SGColors.htmlGlass,
+
+                // Title
+                const Center(
+                  child: Text(
+                    'Welcome to ShowGrid',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                        decoration: BoxDecoration(
-                          border: Border(right: BorderSide(color: SGColors.borderSubtle)),
-                        ),
-                        child: const Text('+91', style: TextStyle(fontSize: 16, color: Colors.white)),
+                ),
+                const SizedBox(height: 8),
+                const Center(
+                  child: Text(
+                    'Sign in to continue',
+                    style: TextStyle(fontSize: 14, color: SGColors.htmlMuted),
+                  ),
+                ),
+                const SizedBox(height: 40),
+
+                // Phone input
+                const Text('Phone Number', style: TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Country code
+                    Container(
+                      width: 80,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: SGColors.htmlGlass,
+                        border: Border.all(color: SGColors.borderSubtle),
                       ),
-                      Expanded(
-                        child: TextField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-                          style: const TextStyle(fontSize: 16, color: Colors.white),
-                          decoration: const InputDecoration(
-                            hintText: 'Enter phone number',
-                            hintStyle: TextStyle(color: SGColors.htmlMuted),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                      child: Center(
+                        child: DropdownButton<String>(
+                          value: _countryCode,
+                          underline: const SizedBox(),
+                          dropdownColor: SGColors.carbonBlack,
+                          items: const [
+                            DropdownMenuItem(value: '+91', child: Text('+91', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(value: '+1', child: Text('+1', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(value: '+44', child: Text('+44', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(value: '+971', child: Text('+971', style: TextStyle(color: Colors.white))),
+                          ],
+                          onChanged: (val) => setState(() => _countryCode = val!),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Phone number
+                    Expanded(
+                      child: TextField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        decoration: InputDecoration(
+                          hintText: 'Enter phone number',
+                          hintStyle: const TextStyle(color: SGColors.htmlMuted),
+                          filled: true,
+                          fillColor: SGColors.htmlGlass,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: SGColors.borderSubtle),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: SGColors.htmlViolet, width: 2),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: SGColors.borderSubtle),
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
-                ],
+                const SizedBox(height: 16),
+
+                // Error message
+                if (_errorMessage != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.redAccent.withOpacity(0.1),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 24),
-                // Send OTP Button
+
+                // Send OTP button
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _sendOTP,
+                    onPressed: _isLoading ? null : _sendOtp,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: SGColors.htmlViolet,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      disabledBackgroundColor: SGColors.htmlViolet.withOpacity(0.5),
                     ),
                     child: _isLoading
-                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Send OTP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text(
+                            'Send OTP',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                          ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 30),
+
                 // Divider
-                Row(
+                const Row(
                   children: [
                     Expanded(child: Divider(color: SGColors.borderSubtle)),
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       child: Text('or', style: TextStyle(color: SGColors.htmlMuted)),
                     ),
                     Expanded(child: Divider(color: SGColors.borderSubtle)),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 30),
+
                 // Google Sign In
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
                   child: OutlinedButton.icon(
                     onPressed: _isGoogleLoading ? null : _signInWithGoogle,
                     icon: _isGoogleLoading
-                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                        : Image.network('https://www.google.com/favicon.ico', width: 24, height: 24,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, color: Colors.white)),
-                    label: Text(_isGoogleLoading ? 'Signing in...' : 'Continue with Google',
-                        style: const TextStyle(fontSize: 16, color: Colors.white)),
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Image.network(
+                            'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                            height: 20,
+                            width: 20,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, color: Colors.white),
+                          ),
+                    label: const Text('Continue with Google'),
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: SGColors.borderSubtle),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: SGColors.borderSubtle),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 ),
-                const Spacer(),
-                // Skip for now (dev only)
+                const SizedBox(height: 40),
+
+                // Terms
                 Center(
-                  child: TextButton(
-                    onPressed: () => context.go('/home'),
-                    child: const Text('Skip for now →', style: TextStyle(color: SGColors.htmlMuted)),
+                  child: Text(
+                    'By continuing, you agree to our\nTerms of Service and Privacy Policy',
+                    style: TextStyle(fontSize: 12, color: SGColors.htmlMuted.withOpacity(0.7)),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ],
