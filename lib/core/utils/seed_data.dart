@@ -1,6 +1,4 @@
 // lib/core/utils/seed_data.dart
-// Utility to seed Firestore with sample data
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SeedData {
@@ -10,18 +8,13 @@ class SeedData {
     await seedChallenges();
     await seedEpisodes();
     await seedChapters();
-    print('✅ All data seeded successfully!');
+    print('✅ All data seeded!');
   }
 
-  // FORTUNE GRID - Challenges
   static Future<void> seedChallenges() async {
     final collection = _db.collection('challenges');
-    final existing = await collection.limit(1).get();
-    
-    if (existing.docs.isNotEmpty) {
-      print('Challenges already exist, skipping...');
-      return;
-    }
+    final existing = await collection.limit(2).get();
+    if (existing.docs.length >= 2) return;
 
     final challenges = [
       {
@@ -35,12 +28,11 @@ class SeedData {
         'maxDuration': 60,
         'entriesCount': 234,
         'prizePool': '₹50,000',
-        'endDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 14))),
         'createdAt': FieldValue.serverTimestamp(),
       },
       {
         'title': 'Style Street Runway',
-        'description': 'Turn walkways into your runway. Capture OOTDs, twirls, squad fits and bold street style moments.',
+        'description': 'Turn walkways into your runway. Capture OOTDs, twirls, squad fits and bold street style.',
         'imageUrl': 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800',
         'zone': 'Fashion Street',
         'mediaType': 'video',
@@ -49,12 +41,11 @@ class SeedData {
         'maxDuration': 60,
         'entriesCount': 189,
         'prizePool': '₹40,000',
-        'endDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 10))),
         'createdAt': FieldValue.serverTimestamp(),
       },
       {
         'title': 'Family Fun Quest',
-        'description': 'Capture precious family moments - laughter, bonding, and those candid memories that last forever.',
+        'description': 'Capture precious family moments - laughter, bonding, and candid memories that last forever.',
         'imageUrl': 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800',
         'zone': 'Family Zone',
         'mediaType': 'photo_video',
@@ -63,7 +54,6 @@ class SeedData {
         'maxDuration': 90,
         'entriesCount': 156,
         'prizePool': '₹35,000',
-        'endDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 21))),
         'createdAt': FieldValue.serverTimestamp(),
       },
       {
@@ -77,7 +67,6 @@ class SeedData {
         'maxDuration': 60,
         'entriesCount': 312,
         'prizePool': '₹45,000',
-        'endDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 7))),
         'createdAt': FieldValue.serverTimestamp(),
       },
       {
@@ -91,7 +80,6 @@ class SeedData {
         'maxDuration': 30,
         'entriesCount': 278,
         'prizePool': '₹30,000',
-        'endDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 12))),
         'createdAt': FieldValue.serverTimestamp(),
       },
       {
@@ -105,26 +93,20 @@ class SeedData {
         'maxDuration': 0,
         'entriesCount': 198,
         'prizePool': '₹25,000',
-        'endDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 18))),
         'createdAt': FieldValue.serverTimestamp(),
       },
     ];
 
-    for (var challenge in challenges) {
-      await collection.add(challenge);
+    for (var c in challenges) {
+      await collection.add(c);
     }
     print('✅ ${challenges.length} challenges added');
   }
 
-  // FANVERSE GRID - Episodes
   static Future<void> seedEpisodes() async {
     final collection = _db.collection('episodes');
-    final existing = await collection.limit(1).get();
-    
-    if (existing.docs.isNotEmpty) {
-      print('Episodes already exist, skipping...');
-      return;
-    }
+    final existing = await collection.limit(2).get();
+    if (existing.docs.length >= 2) return;
 
     final episodes = [
       {
@@ -201,26 +183,21 @@ class SeedData {
       },
     ];
 
-    for (var episode in episodes) {
-      await collection.add(episode);
+    for (var e in episodes) {
+      await collection.add(e);
     }
     print('✅ ${episodes.length} episodes added');
   }
 
-  // GRIDVOICE - Chapters
   static Future<void> seedChapters() async {
     final collection = _db.collection('chapters');
-    final existing = await collection.limit(1).get();
-    
-    if (existing.docs.isNotEmpty) {
-      print('Chapters already exist, skipping...');
-      return;
-    }
+    final existing = await collection.limit(2).get();
+    if (existing.docs.length >= 2) return;
 
     final chapters = [
       {
         'title': 'My City Story',
-        'description': 'Tell us about your city - its hidden gems, local legends, and what makes it special to you.',
+        'description': 'Tell us about your city - its hidden gems, local legends, and what makes it special.',
         'imageUrl': 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800',
         'category': 'Places',
         'mediaType': 'audio',
@@ -253,7 +230,7 @@ class SeedData {
       },
       {
         'title': 'Life Lessons',
-        'description': 'Share a life lesson you learned the hard way. Your experience could help someone else.',
+        'description': 'Share a life lesson you learned the hard way. Your experience could help someone.',
         'imageUrl': 'https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=800',
         'category': 'Wisdom',
         'mediaType': 'audio',
@@ -264,8 +241,8 @@ class SeedData {
       },
     ];
 
-    for (var chapter in chapters) {
-      await collection.add(chapter);
+    for (var ch in chapters) {
+      await collection.add(ch);
     }
     print('✅ ${chapters.length} chapters added');
   }

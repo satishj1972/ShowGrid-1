@@ -1,12 +1,13 @@
 // lib/main.dart
-// ShowGrid Complete App with Firebase
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'core/router/app_router.dart';
 import 'core/utils/seed_data.dart';
+import 'core/services/ai_scoring_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +18,18 @@ void main() async {
   );
   
   // Seed initial data (only adds if collections are empty)
-  await SeedData.seedAllData();
+  try {
+    await SeedData.seedAllData();
+  } catch (e) {
+    print('Seed data error: $e');
+  }
+  
+  // Load API key if saved
+  final prefs = await SharedPreferences.getInstance();
+  final apiKey = prefs.getString('openai_api_key');
+  if (apiKey != null && apiKey.isNotEmpty) {
+    AIScoringService.setApiKey(apiKey);
+  }
   
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -49,16 +61,6 @@ class ShowGridApp extends StatelessWidget {
           primary: Color(0xFF6C4AFF),
           secondary: Color(0xFFFF4FD8),
           surface: Color(0xFF0D0F1A),
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-        ),
-        snackBarTheme: const SnackBarThemeData(
-          backgroundColor: Color(0xFF0D0F1A),
-          contentTextStyle: TextStyle(color: Colors.white),
-          behavior: SnackBarBehavior.floating,
         ),
       ),
       routerConfig: AppRouter.router,

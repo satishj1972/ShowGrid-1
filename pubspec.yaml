@@ -23,9 +23,10 @@ dependencies:
   firebase_auth: ^5.1.0
   cloud_firestore: ^5.0.0
   firebase_storage: ^12.1.0
+  cloud_functions: ^5.1.0
   google_sign_in: ^6.2.1
   
-  # AI Scoring
+  # Utilities
   http: ^1.2.0
   shared_preferences: ^2.2.2
 
