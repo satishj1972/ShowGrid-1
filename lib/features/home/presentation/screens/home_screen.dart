@@ -1,7 +1,7 @@
 // lib/features/home/presentation/screens/home_screen.dart
-// 2. HOME - Root hub with Fortune, Fanverse, GridVoice cards
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/theme/sg_colors.dart';
 import '../../../../core/widgets/sg_bottom_nav.dart';
 
@@ -10,60 +10,25 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = user?.displayName ?? 'GridMaster';
+
     return Scaffold(
       backgroundColor: SGColors.carbonBlack,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: SGColors.backgroundGradient,
-        ),
+        decoration: const BoxDecoration(gradient: SGColors.backgroundGradient),
         child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 96),
-                  children: [
-                    _buildHero(),
-                    const SizedBox(height: 16),
-                    _buildSnapshot(),
-                    const SizedBox(height: 22),
-                    _buildSectionTitle('All Grids'),
-                    const SizedBox(height: 14),
-                    _buildGridStrip(
-                      context,
-                      meta: 'Participate',
-                      title: 'Fortune Event Quest',
-                      desc: 'Join real-world event challenges. Upload photos or videos. Win rewards.',
-                      cta: 'View Quest →',
-                      route: '/fortune',
-                      gradient: [SGColors.htmlGold, SGColors.htmlPink],
-                      imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1600&auto=format&fit=crop',
-                    ),
-                    _buildGridStrip(
-                      context,
-                      meta: 'Create',
-                      title: 'Magenta Fanverse',
-                      desc: 'Recreate iconic scenes your way. Rated by AI and fans.',
-                      cta: 'Enter Fanverse →',
-                      route: '/fanverse',
-                      gradient: [SGColors.htmlPink, SGColors.htmlViolet],
-                      imageUrl: 'https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?q=80&w=1600&auto=format&fit=crop',
-                    ),
-                    _buildGridStrip(
-                      context,
-                      meta: 'Discover',
-                      title: 'GridVoice TN',
-                      desc: 'Stories of people and places. Watch, listen, and vote.',
-                      cta: 'Start Season →',
-                      route: '/gridvoice',
-                      gradient: [SGColors.htmlGreen, SGColors.htmlBlue],
-                      imageUrl: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1600&auto=format&fit=crop',
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                _buildHeroBanner(context),
+                _buildRateCard(context),
+                _buildGridCards(context),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -73,222 +38,137 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
       child: Row(
         children: [
-          // Logo dot with conic gradient
           Container(
-            width: 22,
-            height: 22,
+            width: 22, height: 22,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const SweepGradient(
-                startAngle: 2.4,
-                colors: [Color(0xFFFF4FD8), Color(0xFFFFB84D), Color(0xFF5CF1FF), Color(0xFFFF4FD8)],
-              ),
-              boxShadow: [BoxShadow(color: const Color(0xFFFF4FD8).withOpacity(0.7), blurRadius: 14)],
+              gradient: const SweepGradient(startAngle: 2.4, colors: [Color(0xFFFF4FD8), Color(0xFFFFB84D), Color(0xFF5CF1FF), Color(0xFFFF4FD8)]),
             ),
           ),
-          const SizedBox(width: 8),
-          const Text(
-            'SHOWGRID',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1.8, color: Colors.white),
-          ),
+          const SizedBox(width: 10),
+          const Text('SHOWGRID', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white)),
+          const Spacer(),
+          const Icon(Icons.notifications_outlined, color: Colors.white),
         ],
       ),
     );
   }
 
-  Widget _buildHero() {
+  Widget _buildHeroBanner(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(colors: [Color(0xFF1A1A2E), Color(0xFF16213E)]),
         border: Border.all(color: SGColors.borderSubtle),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xF8080920), Color(0xF8030310)],
-        ),
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Pink glow
-          Positioned(
-            top: -20,
-            left: -20,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [const Color(0xFFFF4FD8).withOpacity(0.22), Colors.transparent]),
-              ),
-            ),
+          ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(colors: [SGColors.htmlViolet, SGColors.htmlPink, SGColors.htmlCyan]).createShader(bounds),
+            child: const Text('Shine Your Grid', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
           ),
-          // Cyan glow
-          Positioned(
-            top: -20,
-            right: -20,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [const Color(0xFF5CF1FF).withOpacity(0.22), Colors.transparent]),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              RichText(
-                text: TextSpan(
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, height: 1.2),
-                  children: [
-                    const TextSpan(text: 'Three Worlds.\n', style: TextStyle(color: Colors.white)),
-                    TextSpan(
-                      text: 'One Grid.',
-                      style: TextStyle(
-                        foreground: Paint()..shader = const LinearGradient(
-                          colors: [Color(0xFFFFB84D), Color(0xFFFF4FD8), Color(0xFF5CF1FF)],
-                        ).createShader(const Rect.fromLTWH(0, 0, 120, 30)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Participate, create, and discover stories across events, fandoms, and voices.',
-                style: TextStyle(fontSize: 13, color: SGColors.htmlMuted),
-              ),
-            ],
+          const SizedBox(height: 8),
+          const Text('Compete. Create. Conquer.', style: TextStyle(fontSize: 14, color: SGColors.htmlMuted)),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => context.push('/fortune'),
+            style: ElevatedButton.styleFrom(backgroundColor: SGColors.htmlViolet, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+            child: const Text('Start Challenge'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSnapshot() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: SGColors.htmlGlass,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: SGColors.borderSubtle),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
-          Text('🔥 Live challenges', style: TextStyle(fontSize: 12, color: Colors.white)),
-          Text('⭐ AI + people ratings', style: TextStyle(fontSize: 12, color: Colors.white)),
-          Text('🏆 Real winners', style: TextStyle(fontSize: 12, color: Colors.white)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title.toUpperCase(),
-      style: const TextStyle(fontSize: 13, letterSpacing: 1.8, color: SGColors.htmlMuted),
-    );
-  }
-
-  Widget _buildGridStrip(
-    BuildContext context, {
-    required String meta,
-    required String title,
-    required String desc,
-    required String cta,
-    required String route,
-    required List<Color> gradient,
-    required String imageUrl,
-  }) {
+  Widget _buildRateCard(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.go(route),
+      onTap: () => context.push('/rate'),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: SGColors.borderSubtle),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xF8080920), Color(0xF8030310)],
-          ),
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(colors: [SGColors.htmlPink.withOpacity(0.3), SGColors.htmlViolet.withOpacity(0.3)]),
+          border: Border.all(color: SGColors.htmlPink.withOpacity(0.5)),
         ),
-        clipBehavior: Clip.antiAlias,
         child: Row(
           children: [
-            // Image (60%)
-            Expanded(
-              flex: 6,
-              child: Container(
-                height: 140,
-                decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                ),
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: gradient[0].withOpacity(0.3),
-                    child: Center(child: Icon(Icons.image, color: gradient[0], size: 40)),
-                  ),
-                ),
+            Container(
+              width: 50, height: 50,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: SGColors.htmlPink.withOpacity(0.2)),
+              child: const Icon(Icons.star_rate, color: SGColors.htmlPink, size: 28),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Rate Entries', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                  Text('Help others and earn rewards!', style: TextStyle(fontSize: 12, color: SGColors.htmlMuted)),
+                ],
               ),
             ),
-            // Content (40%)
+            const Icon(Icons.arrow_forward_ios, color: SGColors.htmlPink, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGridCards(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text('Choose Your Grid', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+          ),
+          _gridCard(context, 'Fortune Grid', 'Real-world challenges', Icons.emoji_events, SGColors.htmlGold, '/fortune'),
+          const SizedBox(height: 12),
+          _gridCard(context, 'Fanverse', 'Pop culture recreations', Icons.movie, SGColors.htmlPink, '/fanverse'),
+          const SizedBox(height: 12),
+          _gridCard(context, 'GridVoice', 'Audio storytelling', Icons.mic, SGColors.htmlGreen, '/gridvoice'),
+        ],
+      ),
+    );
+  }
+
+  Widget _gridCard(BuildContext context, String title, String subtitle, IconData icon, Color color, String route) {
+    return GestureDetector(
+      onTap: () => context.push(route),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: SGColors.htmlGlass,
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56, height: 56,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: color.withOpacity(0.15)),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(width: 16),
             Expanded(
-              flex: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          meta.toUpperCase(),
-                          style: const TextStyle(fontSize: 10, letterSpacing: 1.8, color: SGColors.htmlMuted),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          title,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          desc,
-                          style: const TextStyle(fontSize: 12, color: Color(0xE0FFFFFF), height: 1.4),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(999),
-                          gradient: LinearGradient(colors: [gradient[0], gradient[1], SGColors.htmlCyan]),
-                        ),
-                        child: Text(
-                          cta.toUpperCase(),
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.2, color: Color(0xFF050611)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color)),
+                  Text(subtitle, style: const TextStyle(fontSize: 12, color: SGColors.htmlMuted)),
+                ],
               ),
             ),
+            Icon(Icons.arrow_forward_ios, color: color, size: 18),
           ],
         ),
       ),
