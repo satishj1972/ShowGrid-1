@@ -1,6 +1,6 @@
 // lib/features/powerboard/presentation/screens/powerboard_screen.dart
-// 4. Powerboard - All Season Ranking
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/theme/sg_colors.dart';
 import '../../../../core/widgets/sg_bottom_nav.dart';
 
@@ -12,18 +12,12 @@ class PowerboardScreen extends StatefulWidget {
 }
 
 class _PowerboardScreenState extends State<PowerboardScreen> {
-  int _currentTab = 0;
-  final List<String> _tabs = ['By Challenge', 'By Category', 'Global', 'Seasonal'];
-
-  final List<Map<String, dynamic>> _rankings = [
-    {'rank': 1, 'user': '@foodie.sam', 'score': 9.45, 'entries': 12, 'badge': '🥇'},
-    {'rank': 2, 'user': '@magenta.fan', 'score': 9.35, 'entries': 10, 'badge': '🥈'},
-    {'rank': 3, 'user': '@tn.stories', 'score': 9.25, 'entries': 15, 'badge': '🥉'},
-    {'rank': 4, 'user': '@street.style', 'score': 9.10, 'entries': 8, 'badge': ''},
-    {'rank': 5, 'user': '@pose.queen', 'score': 9.05, 'entries': 11, 'badge': ''},
-    {'rank': 6, 'user': '@village.voice', 'score': 8.95, 'entries': 9, 'badge': ''},
-    {'rank': 7, 'user': '@local.lens', 'score': 8.85, 'entries': 7, 'badge': ''},
-    {'rank': 8, 'user': '@event.hunter', 'score': 8.75, 'entries': 14, 'badge': ''},
+  String _selectedFilter = 'all';
+  final List<Map<String, dynamic>> _filters = [
+    {'id': 'all', 'label': 'Global'},
+    {'id': 'fortune', 'label': 'Fortune'},
+    {'id': 'fanverse', 'label': 'Fanverse'},
+    {'id': 'gridvoice', 'label': 'GridVoice'},
   ];
 
   @override
@@ -36,11 +30,8 @@ class _PowerboardScreenState extends State<PowerboardScreen> {
           child: Column(
             children: [
               _buildHeader(),
-              _buildTabs(),
-              const SizedBox(height: 16),
-              _buildTopThree(),
-              const SizedBox(height: 16),
-              Expanded(child: _buildRankingsList()),
+              _buildFilters(),
+              Expanded(child: _buildLeaderboard()),
             ],
           ),
         ),
@@ -51,51 +42,64 @@ class _PowerboardScreenState extends State<PowerboardScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
       child: Row(
         children: [
           Container(
-            width: 22, height: 22,
+            width: 22,
+            height: 22,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const SweepGradient(startAngle: 2.4, colors: [Color(0xFFFF4FD8), Color(0xFFFFB84D), Color(0xFF5CF1FF), Color(0xFFFF4FD8)]),
+              gradient: const SweepGradient(
+                startAngle: 2.4,
+                colors: [Color(0xFFFF4FD8), Color(0xFFFFB84D), Color(0xFF5CF1FF), Color(0xFFFF4FD8)],
+              ),
               boxShadow: [BoxShadow(color: const Color(0xFFFF4FD8).withOpacity(0.7), blurRadius: 14)],
             ),
           ),
           const SizedBox(width: 10),
-          const Text('POWERBOARD', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1.8, color: Colors.white)),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(color: SGColors.pulseGold.withOpacity(0.15), borderRadius: BorderRadius.circular(999), border: Border.all(color: SGColors.pulseGold.withOpacity(0.5))),
-            child: const Text('SEASON 1', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: SGColors.pulseGold)),
+          const Text(
+            'POWERBOARD',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: Colors.white),
           ),
+          const Spacer(),
+          const Icon(Icons.emoji_events, color: SGColors.htmlGold, size: 28),
         ],
       ),
     );
   }
 
-  Widget _buildTabs() {
-    return SizedBox(
-      height: 36,
+  Widget _buildFilters() {
+    return Container(
+      height: 40,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: _tabs.length,
+        itemCount: _filters.length,
         itemBuilder: (context, index) {
-          final isActive = _currentTab == index;
+          final filter = _filters[index];
+          final isSelected = _selectedFilter == filter['id'];
+          
           return GestureDetector(
-            onTap: () => setState(() => _currentTab = index),
+            onTap: () => setState(() => _selectedFilter = filter['id']),
             child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              margin: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                gradient: isActive ? const LinearGradient(colors: [Color(0xFFFFB84D), Color(0xFFFF4FD8)]) : null,
-                color: isActive ? null : const Color(0xFF0D0F1A),
-                border: isActive ? null : Border.all(color: const Color(0xFF23263A)),
+                borderRadius: BorderRadius.circular(20),
+                color: isSelected ? SGColors.htmlViolet : SGColors.htmlGlass,
+                border: Border.all(color: isSelected ? SGColors.htmlViolet : SGColors.borderSubtle),
               ),
-              child: Text(_tabs[index], style: TextStyle(fontSize: 11, fontWeight: isActive ? FontWeight.w600 : FontWeight.normal, color: isActive ? const Color(0xFF050611) : SGColors.htmlMuted)),
+              child: Center(
+                child: Text(
+                  filter['label'],
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected ? Colors.white : SGColors.htmlMuted,
+                  ),
+                ),
+              ),
             ),
           );
         },
@@ -103,74 +107,252 @@ class _PowerboardScreenState extends State<PowerboardScreen> {
     );
   }
 
-  Widget _buildTopThree() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+  Widget _buildLeaderboard() {
+    Query query = FirebaseFirestore.instance
+        .collection('entries')
+        .where('status', isEqualTo: 'scored')
+        .orderBy('finalScore', descending: true)
+        .limit(50);
+
+    if (_selectedFilter != 'all') {
+      query = query.where('gridType', isEqualTo: _selectedFilter);
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: query.snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: SGColors.htmlGold));
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+        }
+
+        final entries = snapshot.data?.docs ?? [];
+
+        if (entries.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.leaderboard_outlined, size: 60, color: SGColors.htmlMuted),
+                SizedBox(height: 16),
+                Text('No rankings yet', style: TextStyle(fontSize: 16, color: SGColors.htmlMuted)),
+                SizedBox(height: 8),
+                Text('Be the first to submit!', style: TextStyle(fontSize: 14, color: SGColors.htmlMuted)),
+              ],
+            ),
+          );
+        }
+
+        return CustomScrollView(
+          slivers: [
+            // Top 3 Podium
+            if (entries.length >= 3)
+              SliverToBoxAdapter(child: _buildPodium(entries.take(3).toList())),
+            
+            // Rest of the list
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final actualIndex = entries.length >= 3 ? index + 3 : index;
+                    if (actualIndex >= entries.length) return null;
+                    
+                    final entry = entries[actualIndex].data() as Map<String, dynamic>;
+                    return _buildRankItem(actualIndex + 1, entry);
+                  },
+                  childCount: entries.length >= 3 ? entries.length - 3 : entries.length,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPodium(List<QueryDocumentSnapshot> top3) {
+    final first = top3[0].data() as Map<String, dynamic>;
+    final second = top3[1].data() as Map<String, dynamic>;
+    final third = top3[2].data() as Map<String, dynamic>;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 30),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          _buildPodium(_rankings[1], 2, 80),
+          // 2nd place
+          _buildPodiumItem(2, second, 100, Colors.grey[400]!),
           const SizedBox(width: 8),
-          _buildPodium(_rankings[0], 1, 100),
+          // 1st place
+          _buildPodiumItem(1, first, 130, SGColors.htmlGold),
           const SizedBox(width: 8),
-          _buildPodium(_rankings[2], 3, 65),
+          // 3rd place
+          _buildPodiumItem(3, third, 80, Colors.orange[300]!),
         ],
       ),
     );
   }
 
-  Widget _buildPodium(Map<String, dynamic> user, int rank, double height) {
-    Color color;
-    switch (rank) {
-      case 1: color = SGColors.pulseGold; break;
-      case 2: color = Colors.grey; break;
-      default: color = const Color(0xFFCD7F32);
-    }
-    return Expanded(
-      child: Column(
-        children: [
-          Text(user['badge'], style: const TextStyle(fontSize: 24)),
-          const SizedBox(height: 4),
-          Text(user['user'], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
-          Text('${user['score']}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
-          const SizedBox(height: 8),
-          Container(
-            height: height,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [color.withOpacity(0.8), color.withOpacity(0.3)]),
+  Widget _buildPodiumItem(int rank, Map<String, dynamic> entry, double height, Color color) {
+    final score = entry['finalScore'] ?? entry['aiScore']?['overallScore'] ?? 0.0;
+    final userName = entry['userName'] ?? 'Anonymous';
+
+    return Column(
+      children: [
+        // Avatar
+        Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Container(
+              width: rank == 1 ? 70 : 56,
+              height: rank == 1 ? 70 : 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: color, width: 3),
+                image: entry['userPhoto'] != null
+                    ? DecorationImage(image: NetworkImage(entry['userPhoto']), fit: BoxFit.cover)
+                    : null,
+                color: SGColors.htmlGlass,
+              ),
+              child: entry['userPhoto'] == null
+                  ? Center(
+                      child: Text(
+                        userName[0].toUpperCase(),
+                        style: TextStyle(fontSize: rank == 1 ? 24 : 20, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    )
+                  : null,
             ),
-            child: Center(child: Text('#$rank', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white))),
+            // Medal
+            Positioned(
+              bottom: -5,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color,
+                ),
+                child: Text(
+                  rank == 1 ? '🥇' : rank == 2 ? '🥈' : '🥉',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Name
+        SizedBox(
+          width: 80,
+          child: Text(
+            userName,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(height: 4),
+        // Score
+        Text(
+          score.toStringAsFixed(1),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color),
+        ),
+        const SizedBox(height: 8),
+        // Podium block
+        Container(
+          width: 90,
+          height: height,
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [color.withOpacity(0.8), color.withOpacity(0.3)],
+            ),
+          ),
+          child: Center(
+            child: Text(
+              '#$rank',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white.withOpacity(0.8)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRankItem(int rank, Map<String, dynamic> entry) {
+    final score = entry['finalScore'] ?? entry['aiScore']?['overallScore'] ?? 0.0;
+    final userName = entry['userName'] ?? 'Anonymous';
+    final gridType = entry['gridType'] ?? 'fortune';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: SGColors.htmlGlass,
+        border: Border.all(color: SGColors.borderSubtle),
+      ),
+      child: Row(
+        children: [
+          // Rank
+          SizedBox(
+            width: 36,
+            child: Text(
+              '#$rank',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: SGColors.htmlMuted),
+            ),
+          ),
+          
+          // Avatar
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: _getGridColor(gridType),
+            child: Text(userName[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(width: 12),
+          
+          // Name & Grid
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(userName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
+                const SizedBox(height: 2),
+                Text(gridType.toUpperCase(), style: TextStyle(fontSize: 10, color: _getGridColor(gridType))),
+              ],
+            ),
+          ),
+          
+          // Score
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: SGColors.htmlViolet.withOpacity(0.2),
+            ),
+            child: Text(
+              score.toStringAsFixed(1),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: SGColors.htmlViolet),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRankingsList() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 90),
-      decoration: BoxDecoration(color: const Color(0xFF0D0F1A).withOpacity(0.9), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFF23263A))),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(8),
-        itemCount: _rankings.length - 3,
-        itemBuilder: (context, index) {
-          final user = _rankings[index + 3];
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: const Color(0xFF23263A).withOpacity(0.5)))),
-            child: Row(
-              children: [
-                SizedBox(width: 30, child: Text('#${user['rank']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: SGColors.htmlMuted))),
-                const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(user['user'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)), Text('${user['entries']} entries', style: const TextStyle(fontSize: 11, color: SGColors.htmlMuted))])),
-                Text('${user['score']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF5CF1FF))),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+  Color _getGridColor(String gridType) {
+    switch (gridType) {
+      case 'fortune': return SGColors.htmlGold;
+      case 'fanverse': return SGColors.htmlPink;
+      case 'gridvoice': return SGColors.htmlGreen;
+      default: return SGColors.htmlViolet;
+    }
   }
 }
