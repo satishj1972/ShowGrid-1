@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'core/router/app_router.dart';
 import 'core/utils/seed_data.dart';
-import 'core/services/ai_scoring_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,13 +20,6 @@ void main() async {
     await SeedData.seedAllData();
   } catch (e) {
     print('Seed data error: $e');
-  }
-  
-  // Load API key if saved
-  final prefs = await SharedPreferences.getInstance();
-  final apiKey = prefs.getString('openai_api_key');
-  if (apiKey != null && apiKey.isNotEmpty) {
-    AIScoringService.setApiKey(apiKey);
   }
   
   SystemChrome.setPreferredOrientations([
